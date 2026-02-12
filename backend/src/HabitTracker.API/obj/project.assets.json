@@ -3075,11 +3075,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.API\\HabitTracker.API.csproj",
+      "projectUniqueName": "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\habittracker.api\\HabitTracker.API.csproj",
       "projectName": "HabitTracker.API",
-      "projectPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.API\\HabitTracker.API.csproj",
+      "projectPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\habittracker.api\\HabitTracker.API.csproj",
       "packagesPath": "C:\\Users\\Niko\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.API\\obj\\",
+      "outputPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\habittracker.api\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -3100,11 +3100,11 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.Application\\HabitTracker.Application.csproj": {
-              "projectPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.Application\\HabitTracker.Application.csproj"
+            "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\HabitTracker.Application\\HabitTracker.Application.csproj": {
+              "projectPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\HabitTracker.Application\\HabitTracker.Application.csproj"
             },
-            "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.Infrastructure\\HabitTracker.Infrastructure.csproj": {
-              "projectPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.Infrastructure\\HabitTracker.Infrastructure.csproj"
+            "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\HabitTracker.Infrastructure\\HabitTracker.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\HabitTracker.Infrastructure\\HabitTracker.Infrastructure.csproj"
             }
           }
         }

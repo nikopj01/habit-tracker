@@ -1,0 +1,56 @@
+# .NET Build Files
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.o
+*.so
+*.dylib
+
+# Visual Studio
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+*.userprefs
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Frontend Build
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+appsettings.local.json
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+*.code-workspace
+.editorconfig
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.cache/
+.temp/
+*.bak

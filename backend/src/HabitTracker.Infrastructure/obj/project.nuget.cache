@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "GNP5BYa3GAg=",
+  "dgSpecHash": "e/32GgPvCRk=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Niko\\Desktop\\Projects\\habit-tracker\\backend\\src\\HabitTracker.Infrastructure\\HabitTracker.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\Niko\\Desktop\\Projects\\habit_tracker\\habit-tracker\\backend\\src\\HabitTracker.Infrastructure\\HabitTracker.Infrastructure.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Niko\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\Niko\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
