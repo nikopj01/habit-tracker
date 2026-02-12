@@ -14,6 +14,7 @@ export interface SignUpRequest {
 export interface SignInRequest {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface UserProfile {

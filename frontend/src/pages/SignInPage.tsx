@@ -8,6 +8,7 @@ const SignInPage: React.FC = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -17,9 +18,10 @@ const SignInPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await authService.signIn({ email, password });
+      const response = await authService.signIn({ email, password, rememberMe });
       
       localStorage.setItem('accessToken', response.accessToken);
+      localStorage.setItem('rememberMe', rememberMe.toString());
       console.log('Access Token:', response.accessToken);
       if (response.requiresProfileSetup) {
         console.log('Redirecting to profile setup...');
@@ -142,6 +144,22 @@ const SignInPage: React.FC = () => {
                   placeholder="••••••••"
                 />
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-[var(--border-color)] bg-[var(--bg-tertiary)] 
+                  text-cyan-500 focus:ring-cyan-500/50 focus:ring-offset-0"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-[var(--text-secondary)]">
+                Remember me for 30 days
+              </label>
             </div>
 
             <button

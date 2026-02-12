@@ -7,7 +7,8 @@ public record SignUpRequestDto(
 
 public record SignInRequestDto(
     string Email,
-    string Password
+    string Password,
+    bool RememberMe = false
 );
 
 public record AuthResponseDto(

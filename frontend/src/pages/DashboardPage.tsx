@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dashboardService } from '../services/dashboardService';
 import { activityService } from '../services/activityService';
 import type { ActivityAnalytics, DashboardResponse } from '../types/dashboard';
 import type { ActivityListResponse } from '../types/activity';
 import { useAuth } from '../context/AuthContext';
+import { triggerCompletionAnimation } from '../utils/animations';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,17 +15,18 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [optimisticUpdates, setOptimisticUpdates] = useState<Map<string, boolean>>(new Map());
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
+  // Track button refs for animation positioning
+  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
-      console.log('Fetching dashboard...');
+      setLoading(true);
+      console.log('Fetching dashboard for:', currentDate.getFullYear(), currentDate.getMonth() + 1);
       const [dashboardData, activitiesData] = await Promise.all([
-        dashboardService.getDashboard(),
+        dashboardService.getDashboard(currentDate.getFullYear(), currentDate.getMonth() + 1),
         activityService.getActivities(true),
       ]);
       console.log('Dashboard data received:', dashboardData);
@@ -32,45 +34,40 @@ const DashboardPage: React.FC = () => {
       setDashboard(dashboardData);
       setActivities(activitiesData);
       
-      // Only set initial selected date on first load, not on refresh
-      if (dashboardData && !dashboard) {
-        const newDate = new Date(dashboardData.year, dashboardData.month - 1, 1);
-        setSelectedDate(newDate);
+      // Update selected date to first day of current month view if not same month
+      if (dashboardData) {
+        const dashboardMonth = dashboardData.month - 1;
+        const dashboardYear = dashboardData.year;
+        if (selectedDate.getMonth() !== dashboardMonth || selectedDate.getFullYear() !== dashboardYear) {
+          setSelectedDate(new Date(dashboardYear, dashboardMonth, 1));
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch dashboard:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Error message:', error.message);
-      
-      // Show error to user
-      let errorMessage = 'Failed to load dashboard';
-      if (error.response?.status === 400) {
-        errorMessage = 'Bad Request - Invalid parameters sent to server';
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Unauthorized - Please sign in again';
-      } else if (error.response?.status === 500) {
-        errorMessage = 'Server error - Please try again later';
-      }
-      setError(errorMessage);
+      setError(error.response?.data?.detail || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate]);
 
-  const handleToggleActivity = async (activityId: string, date: Date, currentStatus: boolean) => {
-    // Format date as YYYY-MM-DD to preserve the local date without timezone conversion
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  const handleToggleActivity = async (
+    activityId: string, 
+    date: Date, 
+    currentStatus: boolean,
+    buttonElement?: HTMLButtonElement
+  ) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
     
-    console.log('handleToggleActivity: Selected date:', date, 'Formatted:', dateString);
-    
     const newStatus = !currentStatus;
     const updateKey = `${activityId}-${dateString}`;
 
-    // Optimistic update
     setOptimisticUpdates((prev) => new Map(prev.set(updateKey, newStatus)));
 
     try {
@@ -79,9 +76,14 @@ const DashboardPage: React.FC = () => {
         isCompleted: newStatus,
       });
       
-      // Refresh dashboard to get updated analytics
+      // Trigger animation if marking as done (newStatus = true)
+      if (newStatus && buttonElement) {
+        // Calculate completion count for this date
+        const completionCount = getCompletionCountForDate(date) + 1;
+        triggerCompletionAnimation(completionCount, buttonElement);
+      }
+      
       await fetchDashboard();
-      // Clear optimistic update after successful refresh
       setOptimisticUpdates((prev) => {
         const newMap = new Map(prev);
         newMap.delete(updateKey);
@@ -89,7 +91,6 @@ const DashboardPage: React.FC = () => {
       });
     } catch (error) {
       console.error('Failed to update activity status:', error);
-      // Revert optimistic update on error
       setOptimisticUpdates((prev) => {
         const newMap = new Map(prev);
         newMap.delete(updateKey);
@@ -98,14 +99,38 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  const getCompletionCountForDate = (date: Date): number => {
+    if (!dashboard || !activities) return 0;
+    
+    const dayIndex = date.getDate() - 1;
+    let count = 0;
+    
+    dashboard.activities.forEach(activity => {
+      if (activity.completionHistory[dayIndex]) {
+        count++;
+      }
+    });
+    
+    return count;
+  };
+
+  const getTotalActivitiesForDate = (): number => {
+    return activities?.activities?.length || dashboard?.activities?.length || 0;
+  };
+
+  const getDailyProgress = (): { completed: number; total: number; percentage: number } => {
+    const completed = getCompletionCountForDate(selectedDate);
+    const total = getTotalActivitiesForDate();
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return { completed, total, percentage };
+  };
+
   const getDaysArray = () => {
     if (!dashboard) return [];
-    // Handle both camelCase and PascalCase property names
     const daysInMonth = dashboard.daysInMonth || (dashboard as any).DaysInMonth || 0;
-    if (!daysInMonth || daysInMonth <= 0) {
-      console.error('Invalid daysInMonth:', daysInMonth, dashboard);
-      return [];
-    }
+    if (!daysInMonth || daysInMonth <= 0) return [];
+    
     const days = [];
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(i);
@@ -116,7 +141,9 @@ const DashboardPage: React.FC = () => {
   const isToday = (day: number) => {
     if (!dashboard) return false;
     const today = new Date();
-    return today.getDate() === day && today.getMonth() + 1 === dashboard.month && today.getFullYear() === dashboard.year;
+    return today.getDate() === day && 
+           today.getMonth() + 1 === dashboard.month && 
+           today.getFullYear() === dashboard.year;
   };
 
   const isSelectedDate = (day: number) => {
@@ -131,6 +158,30 @@ const DashboardPage: React.FC = () => {
     const newDate = new Date(dashboard.year, dashboard.month - 1, day);
     setSelectedDate(newDate);
   };
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
+  };
+
+  const dailyProgress = getDailyProgress();
 
   if (loading) {
     return (
@@ -153,24 +204,15 @@ const DashboardPage: React.FC = () => {
             </svg>
           </div>
           <div className="text-red-400 text-lg mb-4">{error}</div>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => {
-                setError(null);
-                setLoading(true);
-                fetchDashboard();
-              }}
-              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
-            >
-              Retry
-            </button>
-            <button
-              onClick={() => navigate('/signin')}
-              className="px-6 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-xl font-medium border border-[var(--border-color)] hover:border-cyan-500/50 transition-all"
-            >
-              Go to Sign In
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              fetchDashboard();
+            }}
+            className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -193,7 +235,7 @@ const DashboardPage: React.FC = () => {
                   Hello, {user?.nickname || 'User'}!
                 </h1>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  {new Date(dashboard?.year || 2026, (dashboard?.month || 1) - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  {dashboard?.month}/{dashboard?.year}
                 </p>
               </div>
             </div>
@@ -229,7 +271,8 @@ const DashboardPage: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Calendar */}
-        <div className="glass-card rounded-2xl p-6 mb-8 card-hover">
+        <div className="glass-card rounded-2xl p-6 mb-6 card-hover">
+          {/* Calendar Header with Navigation */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex items-center justify-center">
@@ -237,19 +280,54 @@ const DashboardPage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">
-                {new Date(dashboard?.year || 2026, (dashboard?.month || 1) - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </h2>
+              <div>
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                  {new Date(dashboard?.year || 2026, (dashboard?.month || 1) - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </h2>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Selected: {selectedDate.toLocaleDateString()}
+                  {isToday(selectedDate.getDate()) && dashboard?.month === new Date().getMonth() + 1 && dashboard?.year === new Date().getFullYear() && (
+                    <span className="ml-2 text-xs px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400">Today</span>
+                  )}
+                </p>
+              </div>
             </div>
-            <div className="glass px-4 py-2 rounded-xl text-[var(--text-secondary)]">
-              <span className="text-sm">Selected:</span>
-              <span className="ml-2 font-semibold text-[var(--text-primary)]">{selectedDate.toLocaleDateString()}</span>
-              {isToday(selectedDate.getDate()) && (
-                <span className="ml-2 text-xs px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400">Today</span>
-              )}
+            
+            {/* Month Navigation */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrevMonth}
+                className="p-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] 
+                  hover:border-cyan-500/50 hover:text-cyan-500 transition-all"
+                title="Previous Month"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={handleToday}
+                className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] 
+                  bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded-xl
+                  hover:border-cyan-500/50 hover:text-cyan-500 transition-all"
+              >
+                Today
+              </button>
+              <button
+                onClick={handleNextMonth}
+                className="p-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] 
+                  hover:border-cyan-500/50 hover:text-cyan-500 transition-all"
+                title="Next Month"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-2">
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-2 mb-6">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div key={day} className="text-center text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider py-2">
                 {day}
@@ -275,6 +353,43 @@ const DashboardPage: React.FC = () => {
                 {day}
               </button>
             ))}
+          </div>
+
+          {/* Daily Progress Bar */}
+          <div className="border-t border-[var(--border-color)] pt-6">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span className="text-sm font-medium text-[var(--text-primary)]">
+                  Daily Progress ({selectedDate.toLocaleDateString()})
+                </span>
+              </div>
+              <span className="text-sm font-bold text-[var(--text-primary)]">
+                {dailyProgress.completed} of {dailyProgress.total} completed ({dailyProgress.percentage}%)
+              </span>
+            </div>
+            <div className="h-4 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 progress-bar ${
+                  dailyProgress.percentage >= 100 
+                    ? 'bg-gradient-to-r from-emerald-500 to-green-600' 
+                    : dailyProgress.percentage >= 50 
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600' 
+                      : 'bg-gradient-to-r from-pink-500 to-rose-600'
+                }`}
+                style={{ width: `${dailyProgress.percentage}%` }}
+              />
+            </div>
+            {dailyProgress.percentage >= 100 && (
+              <p className="mt-2 text-sm text-emerald-400 font-medium flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                All activities completed for this day!
+              </p>
+            )}
           </div>
         </div>
 
@@ -333,8 +448,9 @@ const DashboardPage: React.FC = () => {
                     activity={activity}
                     selectedDate={selectedDate}
                     isCompleted={displayStatus}
-                    onToggle={() => handleToggleActivity(activity.activityId, selectedDate, isCompletedOnSelectedDate)}
+                    onToggle={(buttonRef) => handleToggleActivity(activity.activityId, selectedDate, isCompletedOnSelectedDate, buttonRef)}
                     index={index}
+                    buttonRefs={buttonRefs}
                   />
                 );
               })}
@@ -350,11 +466,21 @@ interface ActivityCardProps {
   activity: ActivityAnalytics;
   selectedDate: Date;
   isCompleted: boolean;
-  onToggle: () => void;
+  onToggle: (buttonRef?: HTMLButtonElement) => void;
   index: number;
+  buttonRefs: React.MutableRefObject<Map<string, HTMLButtonElement>>;
 }
 
-const ActivityCard: React.FC<ActivityCardProps> = ({ activity, selectedDate, isCompleted, onToggle, index }) => {
+const ActivityCard: React.FC<ActivityCardProps> = ({ 
+  activity, 
+  selectedDate, 
+  isCompleted, 
+  onToggle, 
+  index,
+  buttonRefs 
+}) => {
+  const buttonId = `${activity.activityId}-${selectedDate.toISOString().split('T')[0]}`;
+  
   return (
     <div 
       className="glass-card rounded-2xl p-6 card-hover"
@@ -372,7 +498,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, selectedDate, isC
             {selectedDate.toLocaleDateString()}
           </p>
           <button
-            onClick={onToggle}
+            ref={(el) => {
+              if (el) buttonRefs.current.set(buttonId, el);
+            }}
+            onClick={() => onToggle(buttonRefs.current.get(buttonId))}
             className={`
               px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105
               ${isCompleted 

@@ -44,19 +44,22 @@ public class AuthService : IAuthService
         // Hash the password
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
+        // Extract default nickname from email (before @)
+        var defaultNickname = request.Email.ToLower().Trim().Split('@')[0];
+        
         // Create user
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = request.Email.ToLower().Trim(),
             PasswordHash = passwordHash,
-            Nickname = string.Empty // Will be set during profile setup
+            Nickname = defaultNickname // Default nickname from email prefix
         };
 
         await _userRepository.CreateAsync(user);
 
         // Generate JWT tokens
-        var accessToken = GenerateJwtToken(user.Id, user.Email);
+        var accessToken = GenerateJwtToken(user.Id, user.Email, false);
         var refreshToken = GenerateRefreshToken();
 
         return new AuthResponseDto(
@@ -64,7 +67,7 @@ public class AuthService : IAuthService
             RefreshToken: refreshToken,
             UserId: user.Id,
             Email: user.Email,
-            RequiresProfileSetup: true
+            RequiresProfileSetup: false // Nickname is set from email by default
         );
     }
 
@@ -89,8 +92,8 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid email or password");
         }
 
-        // Generate JWT tokens
-        var accessToken = GenerateJwtToken(user.Id, user.Email);
+        // Generate JWT tokens with extended expiration if Remember Me is enabled
+        var accessToken = GenerateJwtToken(user.Id, user.Email, request.RememberMe);
         var refreshToken = GenerateRefreshToken();
 
         return new AuthResponseDto(
@@ -98,11 +101,11 @@ public class AuthService : IAuthService
             RefreshToken: refreshToken,
             UserId: user.Id,
             Email: user.Email,
-            RequiresProfileSetup: string.IsNullOrEmpty(user.Nickname)
+            RequiresProfileSetup: false // Nickname is now set from email by default
         );
     }
 
-    private string GenerateJwtToken(Guid userId, string email)
+    private string GenerateJwtToken(Guid userId, string email, bool rememberMe = false)
     {
         var jwtSecret = _configuration["Jwt:Secret"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
         var jwtIssuer = _configuration["Jwt:Issuer"] ?? "HabitTracker";
@@ -116,14 +119,18 @@ public class AuthService : IAuthService
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim("rememberMe", rememberMe.ToString())
         };
+
+        // Extended expiration for Remember Me (30 days) vs normal (24 hours)
+        var expiration = rememberMe ? DateTime.UtcNow.AddDays(30) : DateTime.UtcNow.AddHours(24);
 
         var token = new JwtSecurityToken(
             issuer: jwtIssuer,
             audience: jwtAudience,
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(24),
+            expires: expiration,
             signingCredentials: credentials
         );
 
