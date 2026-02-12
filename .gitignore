@@ -1,5 +1,5 @@
 # .NET Build Files
-bin/
+backend/src/HabitTracker.API/bin
 obj/
 *.dll
 *.exe
