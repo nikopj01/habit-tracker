@@ -134,63 +134,91 @@ const DashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+          <div className="text-lg text-[var(--text-secondary)]">Loading your dashboard...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="text-red-600 text-lg mb-4">{error}</div>
-          <button
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              fetchDashboard();
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Retry
-          </button>
-          <button
-            onClick={() => navigate('/signin')}
-            className="ml-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-          >
-            Go to Sign In
-          </button>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] px-4">
+        <div className="glass-card rounded-2xl p-8 text-center max-w-md">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="text-red-400 text-lg mb-4">{error}</div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetchDashboard();
+              }}
+              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate('/signin')}
+              className="px-6 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-xl font-medium border border-[var(--border-color)] hover:border-cyan-500/50 transition-all"
+            >
+              Go to Sign In
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--bg-primary)] cyber-grid">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="glass sticky top-0 z-40 border-b border-[var(--border-color)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Hello, {user?.nickname || 'User'}!
-              </h1>
-              <p className="text-sm text-gray-600">
-                {dashboard?.month}/{dashboard?.year}
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-neon-cyan">
+                <span className="text-xl font-bold text-white">
+                  {user?.nickname?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+                  Hello, {user?.nickname || 'User'}!
+                </h1>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {new Date(dashboard?.year || 2026, (dashboard?.month || 1) - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </p>
+              </div>
             </div>
-            <div className="flex space-x-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/settings')}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--text-secondary)] 
+                  bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl
+                  hover:border-cyan-500/50 hover:text-cyan-500 transition-all"
               >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
                 Settings
               </button>
               <button
                 onClick={logout}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white
+                  bg-gradient-to-r from-red-500 to-pink-600 rounded-xl
+                  hover:shadow-lg hover:shadow-red-500/25 transition-all"
               >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
                 Sign Out
               </button>
             </div>
@@ -201,19 +229,29 @@ const DashboardPage: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Calendar */}
-        <div className="bg-white rounded-lg shadow mb-8 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {new Date(dashboard?.year || 2026, (dashboard?.month || 1) - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
-            </h2>
-            <div className="text-sm text-gray-600">
-              Selected: <span className="font-semibold">{selectedDate.toLocaleDateString()}</span>
-              {isToday(selectedDate.getDate()) && <span className="ml-2 text-blue-600">(Today)</span>}
+        <div className="glass-card rounded-2xl p-6 mb-8 card-hover">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                {new Date(dashboard?.year || 2026, (dashboard?.month || 1) - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h2>
+            </div>
+            <div className="glass px-4 py-2 rounded-xl text-[var(--text-secondary)]">
+              <span className="text-sm">Selected:</span>
+              <span className="ml-2 font-semibold text-[var(--text-primary)]">{selectedDate.toLocaleDateString()}</span>
+              {isToday(selectedDate.getDate()) && (
+                <span className="ml-2 text-xs px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400">Today</span>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-7 gap-2">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+              <div key={day} className="text-center text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider py-2">
                 {day}
               </div>
             ))}
@@ -222,10 +260,16 @@ const DashboardPage: React.FC = () => {
                 key={day}
                 onClick={() => handleDateSelect(day)}
                 className={`
-                  text-center py-2 rounded-lg text-sm transition-colors
-                  ${isSelectedDate(day) ? 'bg-blue-600 text-white font-bold' : ''}
-                  ${isToday(day) && !isSelectedDate(day) ? 'bg-blue-100 text-blue-800 font-semibold' : ''}
-                  ${!isToday(day) && !isSelectedDate(day) ? 'text-gray-700 hover:bg-gray-100' : ''}
+                  text-center py-3 rounded-xl text-sm font-medium transition-all duration-300
+                  ${isSelectedDate(day) 
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 transform scale-105' 
+                    : ''}
+                  ${isToday(day) && !isSelectedDate(day) 
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                    : ''}
+                  ${!isToday(day) && !isSelectedDate(day) 
+                    ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]' 
+                    : ''}
                 `}
               >
                 {day}
@@ -235,29 +279,52 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Activities */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Your Activities ({activities?.activeCount || 0}/10)
-          </h2>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-600/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                  Your Activities
+                </h2>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {activities?.activeCount || 0} of 10 active activities
+                </p>
+              </div>
+            </div>
+          </div>
           
           {dashboard?.activities.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-gray-600">No activities yet. Create one in settings!</p>
+            <div className="glass-card rounded-2xl p-12 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 flex items-center justify-center">
+                <svg className="w-10 h-10 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">No activities yet</h3>
+              <p className="text-[var(--text-secondary)] mb-6 max-w-md mx-auto">
+                Create your first habit to start tracking your progress and building streaks
+              </p>
               <button
                 onClick={() => navigate('/settings')}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-xl
+                  shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40
+                  transform hover:scale-105 transition-all"
               >
-                Go to Settings
+                Create Activity
               </button>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {dashboard?.activities.map((activity) => {
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {dashboard?.activities.map((activity, index) => {
                 const dayIndex = selectedDate.getDate() - 1;
                 const isCompletedOnSelectedDate = activity.completionHistory[dayIndex] || false;
                 const updateKey = `${activity.activityId}-${selectedDate.toISOString().split('T')[0]}`;
                 const optimisticValue = optimisticUpdates.get(updateKey);
-                // Use optimistic value if present, otherwise use actual value
                 const displayStatus = optimisticValue !== undefined ? optimisticValue : isCompletedOnSelectedDate;
                 
                 return (
@@ -267,6 +334,7 @@ const DashboardPage: React.FC = () => {
                     selectedDate={selectedDate}
                     isCompleted={displayStatus}
                     onToggle={() => handleToggleActivity(activity.activityId, selectedDate, isCompletedOnSelectedDate)}
+                    index={index}
                   />
                 );
               })}
@@ -283,81 +351,96 @@ interface ActivityCardProps {
   selectedDate: Date;
   isCompleted: boolean;
   onToggle: () => void;
+  index: number;
 }
 
-const ActivityCard: React.FC<ActivityCardProps> = ({ activity, selectedDate, isCompleted, onToggle }) => {
+const ActivityCard: React.FC<ActivityCardProps> = ({ activity, selectedDate, isCompleted, onToggle, index }) => {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div 
+      className="glass-card rounded-2xl p-6 card-hover"
+      style={{ animationDelay: `${index * 0.1}s` }}
+    >
       <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">{activity.activityName}</h3>
+        <div className="flex-1 pr-4">
+          <h3 className="text-lg font-bold text-[var(--text-primary)]">{activity.activityName}</h3>
           {activity.activityDescription && (
-            <p className="text-sm text-gray-600 mt-1">{activity.activityDescription}</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">{activity.activityDescription}</p>
           )}
         </div>
-        <div className="flex flex-col items-end">
-          <p className="text-xs text-gray-500 mb-1">
+        <div className="flex flex-col items-end gap-2">
+          <p className="text-xs text-[var(--text-tertiary)]">
             {selectedDate.toLocaleDateString()}
           </p>
           <button
             onClick={onToggle}
             className={`
-              px-4 py-2 rounded-full text-sm font-medium transition-colors
+              px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105
               ${isCompleted 
-                ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}
+                ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30' 
+                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-color)] hover:border-cyan-500/50'}
             `}
           >
-            {isCompleted ? '✓ Done' : 'Mark Done'}
+            {isCompleted ? (
+              <span className="flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Done
+              </span>
+            ) : (
+              'Mark Done'
+            )}
           </button>
         </div>
       </div>
 
       {/* Heat Map */}
-      <div className="mb-4">
+      <div className="mb-6">
         <div className="flex gap-1 flex-wrap">
-          {activity.completionHistory.map((completed, index) => (
+          {activity.completionHistory.map((completed, idx) => (
             <div
-              key={index}
+              key={idx}
               className={`
-                w-4 h-4 rounded-sm
-                ${completed ? 'bg-green-500' : 'bg-gray-200'}
+                w-3 h-3 rounded-sm transition-all duration-300
+                ${completed ? 'bg-emerald-500 shadow-sm shadow-emerald-500/30' : 'bg-[var(--bg-tertiary)]'}
               `}
-              title={`Day ${index + 1}: ${completed ? 'Completed' : 'Not completed'}`}
+              title={`Day ${idx + 1}: ${completed ? 'Completed' : 'Not completed'}`}
             />
           ))}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-gray-500">Total Done:</span>
-          <span className="ml-2 font-semibold">{activity.totalCompleted}</span>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="glass rounded-xl p-3">
+          <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Total Done</p>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{activity.totalCompleted}</p>
         </div>
-        <div>
-          <span className="text-gray-500">Current Streak:</span>
-          <span className="ml-2 font-semibold">{activity.currentStreak} days</span>
+        <div className="glass rounded-xl p-3">
+          <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Current Streak</p>
+          <p className="text-xl font-bold text-cyan-500">{activity.currentStreak}d</p>
         </div>
-        <div>
-          <span className="text-gray-500">Longest Streak:</span>
-          <span className="ml-2 font-semibold">{activity.longestStreak} days</span>
+        <div className="glass rounded-xl p-3">
+          <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Best Streak</p>
+          <p className="text-xl font-bold text-purple-500">{activity.longestStreak}d</p>
         </div>
-        <div>
-          <span className="text-gray-500">Effort Score:</span>
-          <span className="ml-2 font-semibold">{activity.effortScore}%</span>
+        <div className="glass rounded-xl p-3">
+          <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Effort</p>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{activity.effortScore}%</p>
         </div>
-        <div className="col-span-2">
-          <div className="flex items-center">
-            <span className="text-gray-500">Monthly Progress:</span>
-            <span className="ml-2 font-semibold">{activity.monthlyProgress}%</span>
-          </div>
-          <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-600 transition-all"
-              style={{ width: `${Math.min(activity.monthlyProgress, 100)}%` }}
-            />
-          </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mt-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Monthly Progress</span>
+          <span className="text-sm font-bold text-[var(--text-primary)]">{activity.monthlyProgress}%</span>
+        </div>
+        <div className="h-3 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-500 progress-bar"
+            style={{ width: `${Math.min(activity.monthlyProgress, 100)}%` }}
+          />
         </div>
       </div>
     </div>
