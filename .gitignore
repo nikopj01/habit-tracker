@@ -1,6 +1,7 @@
 # .NET Build Files
-backend/src/HabitTracker.API/bin
-obj/
+# Ignore all bin and obj folders anywhere in the project
+[Bb]in/
+[Oo]bj/
 *.dll
 *.exe
 *.pdb
