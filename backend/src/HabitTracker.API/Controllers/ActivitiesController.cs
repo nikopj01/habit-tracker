@@ -66,6 +66,22 @@ public class ActivitiesController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("monthly-plan")]
+    public async Task<ActionResult<MonthlyActivityPlanResponseDto>> GetMonthlyPlan([FromQuery] int year, [FromQuery] int month)
+    {
+        var userId = GetCurrentUserId();
+        var plan = await _activityService.GetMonthlyPlanAsync(userId, year, month);
+        return Ok(plan);
+    }
+
+    [HttpPut("monthly-plan")]
+    public async Task<ActionResult<MonthlyActivityPlanResponseDto>> UpdateMonthlyPlan([FromBody] MonthlyActivityPlanRequestDto request)
+    {
+        var userId = GetCurrentUserId();
+        var plan = await _activityService.UpdateMonthlyPlanAsync(userId, request);
+        return Ok(plan);
+    }
+
     private Guid GetCurrentUserId()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 

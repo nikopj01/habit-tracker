@@ -8,19 +8,30 @@ public class DashboardService : IDashboardService
 {
     private readonly IActivityRepository _activityRepository;
     private readonly IActivityLogRepository _activityLogRepository;
+    private readonly IUserMonthlyActivityRepository _userMonthlyActivityRepository;
 
     public DashboardService(
         IActivityRepository activityRepository,
-        IActivityLogRepository activityLogRepository)
+        IActivityLogRepository activityLogRepository,
+        IUserMonthlyActivityRepository userMonthlyActivityRepository)
     {
         _activityRepository = activityRepository;
         _activityLogRepository = activityLogRepository;
+        _userMonthlyActivityRepository = userMonthlyActivityRepository;
     }
 
     public async Task<DashboardResponseDto> GetDashboardAsync(Guid userId, int year, int month)
     {
-        // Get all active activities for the user
-        var activities = await _activityRepository.GetByUserIdAsync(userId, isActive: true);
+        var monthSelection = await EnsureMonthSelectionInitializedAsync(userId, year, month);
+        var selectedActivityIds = monthSelection
+            .Where(x => x.IsActive)
+            .Select(x => x.ActivityId)
+            .ToHashSet();
+
+        var activities = (await _activityRepository.GetByUserIdAsync(userId, isActive: null))
+            .Where(x => selectedActivityIds.Contains(x.Id))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToList();
         
         // Calculate date range
         var startOfMonth = DateTime.SpecifyKind(new DateTime(year, month, 1), DateTimeKind.Utc);
@@ -195,6 +206,7 @@ public class DashboardService : IDashboardService
             ActivityId: activity.Id,
             ActivityName: activity.Name,
             ActivityDescription: activity.Description,
+            ActivityIcon: activity.Icon,
             CompletionHistory: completionHistory,
             TotalCompleted: totalCompleted,
             CurrentStreak: currentStreak,
@@ -273,5 +285,38 @@ public class DashboardService : IDashboardService
         }
 
         return longestStreak;
+    }
+
+    private async Task<List<UserMonthlyActivity>> EnsureMonthSelectionInitializedAsync(Guid userId, int year, int month)
+    {
+        var rows = await _userMonthlyActivityRepository.GetByUserAndMonthAsync(userId, year, month);
+        if (rows.Count > 0)
+        {
+            return rows;
+        }
+
+        var currentMonthDate = new DateTime(year, month, 1);
+        var previousMonthDate = currentMonthDate.AddMonths(-1);
+        var previousRows = await _userMonthlyActivityRepository.GetByUserAndMonthAsync(
+            userId,
+            previousMonthDate.Year,
+            previousMonthDate.Month);
+
+        var seedIds = previousRows
+            .Where(x => x.IsActive)
+            .Select(x => x.ActivityId)
+            .Distinct()
+            .ToList();
+
+        if (seedIds.Count == 0)
+        {
+            seedIds = (await _activityRepository.GetByUserIdAsync(userId, isActive: true))
+                .Select(x => x.Id)
+                .Take(10)
+                .ToList();
+        }
+
+        await _userMonthlyActivityRepository.CreateMonthSelectionIfMissingAsync(userId, year, month, seedIds);
+        return await _userMonthlyActivityRepository.GetByUserAndMonthAsync(userId, year, month);
     }
 }

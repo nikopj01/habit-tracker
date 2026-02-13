@@ -1,5 +1,12 @@
 import api from './api';
-import type { Activity, ActivityListResponse, CreateActivityRequest, UpdateActivityRequest } from '../types/activity';
+import type {
+  Activity,
+  ActivityListResponse,
+  CreateActivityRequest,
+  UpdateActivityRequest,
+  MonthlyActivityPlanRequest,
+  MonthlyActivityPlanResponse,
+} from '../types/activity';
 
 export const activityService = {
   getActivities: async (isActive?: boolean): Promise<ActivityListResponse> => {
@@ -29,5 +36,17 @@ export const activityService = {
 
   restoreActivity: async (id: string): Promise<void> => {
     await api.post(`/activities/${id}/restore`);
+  },
+
+  getMonthlyPlan: async (year: number, month: number): Promise<MonthlyActivityPlanResponse> => {
+    const response = await api.get<MonthlyActivityPlanResponse>('/activities/monthly-plan', {
+      params: { year, month },
+    });
+    return response.data;
+  },
+
+  updateMonthlyPlan: async (data: MonthlyActivityPlanRequest): Promise<MonthlyActivityPlanResponse> => {
+    const response = await api.put<MonthlyActivityPlanResponse>('/activities/monthly-plan', data);
+    return response.data;
   },
 };

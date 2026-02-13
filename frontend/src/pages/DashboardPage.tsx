@@ -18,6 +18,13 @@ const DashboardPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Track button refs for animation positioning
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -34,13 +41,14 @@ const DashboardPage: React.FC = () => {
       setDashboard(dashboardData);
       setActivities(activitiesData);
       
-      // Update selected date to first day of current month view if not same month
+      // Keep selected day stable within the current month, reset only when month changes.
       if (dashboardData) {
         const dashboardMonth = dashboardData.month - 1;
         const dashboardYear = dashboardData.year;
-        if (selectedDate.getMonth() !== dashboardMonth || selectedDate.getFullYear() !== dashboardYear) {
-          setSelectedDate(new Date(dashboardYear, dashboardMonth, 1));
-        }
+        setSelectedDate((prev) =>
+          prev.getMonth() === dashboardMonth && prev.getFullYear() === dashboardYear
+            ? prev
+            : new Date(dashboardYear, dashboardMonth, 1));
       }
     } catch (error: any) {
       console.error('Failed to fetch dashboard:', error);
@@ -60,10 +68,7 @@ const DashboardPage: React.FC = () => {
     currentStatus: boolean,
     buttonElement?: HTMLButtonElement
   ) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
+    const dateString = formatLocalDate(date);
     
     const newStatus = !currentStatus;
     const updateKey = `${activityId}-${dateString}`;
@@ -438,7 +443,7 @@ const DashboardPage: React.FC = () => {
               {dashboard?.activities.map((activity, index) => {
                 const dayIndex = selectedDate.getDate() - 1;
                 const isCompletedOnSelectedDate = activity.completionHistory[dayIndex] || false;
-                const updateKey = `${activity.activityId}-${selectedDate.toISOString().split('T')[0]}`;
+                const updateKey = `${activity.activityId}-${formatLocalDate(selectedDate)}`;
                 const optimisticValue = optimisticUpdates.get(updateKey);
                 const displayStatus = optimisticValue !== undefined ? optimisticValue : isCompletedOnSelectedDate;
                 
@@ -479,7 +484,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
   index,
   buttonRefs 
 }) => {
-  const buttonId = `${activity.activityId}-${selectedDate.toISOString().split('T')[0]}`;
+  const year = selectedDate.getFullYear();
+  const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(selectedDate.getDate()).padStart(2, '0');
+  const buttonId = `${activity.activityId}-${year}-${month}-${day}`;
   
   return (
     <div 
@@ -488,7 +496,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({
     >
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1 pr-4">
-          <h3 className="text-lg font-bold text-[var(--text-primary)]">{activity.activityName}</h3>
+          <h3 className="text-lg font-bold text-[var(--text-primary)]">
+            <span className="mr-2">{activity.activityIcon}</span>
+            {activity.activityName}
+          </h3>
           {activity.activityDescription && (
             <p className="text-sm text-[var(--text-secondary)] mt-1 line-clamp-2">{activity.activityDescription}</p>
           )}

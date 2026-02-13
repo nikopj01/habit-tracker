@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { activityService } from '../services/activityService';
 import { authService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
-import type { Activity, ActivityListResponse } from '../types/activity';
+import type { Activity, ActivityListResponse, MonthlyActivityPlanResponse } from '../types/activity';
+import { ACTIVITY_ICONS, DEFAULT_ACTIVITY_ICON } from '../constants/activityIcons';
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,10 +21,20 @@ const SettingsPage: React.FC = () => {
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [profileError, setProfileError] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [planMonthDate, setPlanMonthDate] = useState<Date>(new Date());
+  const [monthlyPlan, setMonthlyPlan] = useState<MonthlyActivityPlanResponse | null>(null);
+  const [isLoadingPlan, setIsLoadingPlan] = useState(true);
+  const [planError, setPlanError] = useState('');
+  const [planSuccess, setPlanSuccess] = useState('');
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
 
   useEffect(() => {
     fetchActivities();
   }, []);
+
+  useEffect(() => {
+    fetchMonthlyPlan(planMonthDate);
+  }, [planMonthDate]);
 
   const fetchActivities = async () => {
     try {
@@ -42,10 +53,26 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const fetchMonthlyPlan = async (date: Date) => {
+    try {
+      setIsLoadingPlan(true);
+      setPlanError('');
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const data = await activityService.getMonthlyPlan(year, month);
+      setMonthlyPlan(data);
+    } catch (error: any) {
+      setPlanError(error.response?.data?.detail || 'Failed to load monthly plan');
+    } finally {
+      setIsLoadingPlan(false);
+    }
+  };
+
   const handleArchive = async (id: string) => {
     try {
       await activityService.archiveActivity(id);
       await fetchActivities();
+      await fetchMonthlyPlan(planMonthDate);
     } catch (error) {
       console.error('Failed to archive activity:', error);
     }
@@ -55,6 +82,7 @@ const SettingsPage: React.FC = () => {
     try {
       await activityService.restoreActivity(id);
       await fetchActivities();
+      await fetchMonthlyPlan(planMonthDate);
     } catch (error) {
       console.error('Failed to restore activity:', error);
     }
@@ -76,6 +104,74 @@ const SettingsPage: React.FC = () => {
     } finally {
       setIsSavingProfile(false);
     }
+  };
+
+  const handleTogglePlanActivity = (activityId: string) => {
+    if (!monthlyPlan) return;
+
+    setPlanSuccess('');
+    setMonthlyPlan((prev) => {
+      if (!prev) return prev;
+
+      const currentlySelectedCount = prev.activities.filter((a) => a.isSelected).length;
+      const updatedActivities = prev.activities.map((activity) => {
+        if (activity.activityId !== activityId) {
+          return activity;
+        }
+
+        if (!activity.isSelected && currentlySelectedCount >= prev.maxActivities) {
+          return activity;
+        }
+
+        return { ...activity, isSelected: !activity.isSelected };
+      });
+
+      const selectedCount = updatedActivities.filter((a) => a.isSelected).length;
+      return { ...prev, activities: updatedActivities, selectedCount };
+    });
+  };
+
+  const handleSaveMonthlyPlan = async () => {
+    if (!monthlyPlan) return;
+
+    try {
+      setIsSavingPlan(true);
+      setPlanError('');
+      setPlanSuccess('');
+
+      const activityIds = monthlyPlan.activities
+        .filter((activity) => activity.isSelected)
+        .map((activity) => activity.activityId);
+
+      const updated = await activityService.updateMonthlyPlan({
+        year: monthlyPlan.year,
+        month: monthlyPlan.month,
+        activityIds,
+      });
+
+      setMonthlyPlan(updated);
+      setPlanSuccess('Monthly plan saved');
+    } catch (error: any) {
+      setPlanError(error.response?.data?.detail || 'Failed to save monthly plan');
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
+  const handlePrevPlanMonth = () => {
+    setPlanMonthDate((prev) => {
+      const next = new Date(prev);
+      next.setMonth(next.getMonth() - 1);
+      return next;
+    });
+  };
+
+  const handleNextPlanMonth = () => {
+    setPlanMonthDate((prev) => {
+      const next = new Date(prev);
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    });
   };
 
   if (loading) {
@@ -238,6 +334,112 @@ const SettingsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Monthly Plan Section */}
+        <div className="glass-card rounded-2xl mb-8 overflow-hidden">
+          <div className="p-6 border-b border-[var(--border-color)]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-[var(--text-primary)]">Monthly Plan</h2>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Pick up to {monthlyPlan?.maxActivities ?? 10} activities for this month
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrevPlanMonth}
+                  className="p-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:border-cyan-500/50 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-medium min-w-40 text-center">
+                  {planMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={handleNextPlanMonth}
+                  className="p-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:border-cyan-500/50 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            {planError && (
+              <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm">
+                {planError}
+              </div>
+            )}
+            {planSuccess && (
+              <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl text-sm">
+                {planSuccess}
+              </div>
+            )}
+
+            {isLoadingPlan ? (
+              <p className="text-[var(--text-secondary)]">Loading monthly plan...</p>
+            ) : (
+              <>
+                <p className="mb-4 text-sm text-[var(--text-secondary)]">
+                  Selected {monthlyPlan?.selectedCount ?? 0} / {monthlyPlan?.maxActivities ?? 10}
+                </p>
+                <div className="space-y-3 mb-6">
+                  {monthlyPlan?.activities.map((activity) => (
+                    <label
+                      key={activity.activityId}
+                      className={`flex items-center justify-between gap-3 p-4 rounded-xl border transition-all ${
+                        activity.isArchived
+                          ? 'border-[var(--border-color)] opacity-60'
+                          : 'border-[var(--border-color)] hover:border-cyan-500/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={activity.isSelected}
+                          disabled={activity.isArchived}
+                          onChange={() => handleTogglePlanActivity(activity.activityId)}
+                          className="h-4 w-4 rounded border-[var(--border-color)]"
+                        />
+                        <span className="text-xl">{activity.icon}</span>
+                        <div>
+                          <p className="font-medium text-[var(--text-primary)]">{activity.name}</p>
+                          {activity.description && (
+                            <p className="text-sm text-[var(--text-secondary)]">{activity.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      {activity.isArchived && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                          Archived
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  onClick={handleSaveMonthlyPlan}
+                  disabled={isSavingPlan}
+                  className="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium rounded-xl
+                    shadow-lg hover:shadow-orange-500/40 transition-all disabled:opacity-50"
+                >
+                  {isSavingPlan ? 'Saving...' : 'Save Monthly Plan'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Active Activities Section */}
         <div className="glass-card rounded-2xl mb-8 overflow-hidden">
           <div className="p-6 border-b border-[var(--border-color)]">
@@ -278,6 +480,7 @@ const SettingsPage: React.FC = () => {
                 onSuccess={() => {
                   setShowCreateForm(false);
                   fetchActivities();
+                  fetchMonthlyPlan(planMonthDate);
                 }}
               />
             )}
@@ -289,6 +492,7 @@ const SettingsPage: React.FC = () => {
                 onSuccess={() => {
                   setEditingActivity(null);
                   fetchActivities();
+                  fetchMonthlyPlan(planMonthDate);
                 }}
               />
             )}
@@ -383,7 +587,10 @@ const ActivityItem: React.FC<ActivityItemProps> = ({
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       <div className="flex-1">
-        <h3 className="font-semibold text-[var(--text-primary)]">{activity.name}</h3>
+        <h3 className="font-semibold text-[var(--text-primary)]">
+          <span className="mr-2">{activity.icon}</span>
+          {activity.name}
+        </h3>
         {activity.description && (
           <p className="text-sm text-[var(--text-secondary)] mt-1">{activity.description}</p>
         )}
@@ -439,6 +646,7 @@ interface ActivityFormProps {
 const ActivityForm: React.FC<ActivityFormProps> = ({ activity, onCancel, onSuccess }) => {
   const [name, setName] = useState(activity?.name || '');
   const [description, setDescription] = useState(activity?.description || '');
+  const [icon, setIcon] = useState(activity?.icon || DEFAULT_ACTIVITY_ICON);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -449,9 +657,9 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, onCancel, onSucce
 
     try {
       if (activity) {
-        await activityService.updateActivity(activity.id, { name, description });
+        await activityService.updateActivity(activity.id, { name, description, icon });
       } else {
-        await activityService.createActivity({ name, description });
+        await activityService.createActivity({ name, description, icon });
       }
       onSuccess();
     } catch (err: any) {
@@ -501,6 +709,28 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ activity, onCancel, onSucce
               transition-all duration-300"
             placeholder="e.g., Morning Exercise, Read 30 minutes"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+            Icon
+          </label>
+          <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">
+            {ACTIVITY_ICONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => setIcon(emoji)}
+                className={`h-10 rounded-lg text-lg border transition-all ${
+                  icon === emoji
+                    ? 'border-cyan-500 bg-cyan-500/20'
+                    : 'border-[var(--border-color)] bg-[var(--bg-tertiary)] hover:border-cyan-500/50'
+                }`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>

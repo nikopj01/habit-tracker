@@ -2,7 +2,8 @@ namespace HabitTracker.Application.DTOs;
 
 public record SignUpRequestDto(
     string Email,
-    string Password
+    string Password,
+    string Nickname
 );
 
 public record SignInRequestDto(

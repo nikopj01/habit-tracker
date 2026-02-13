@@ -8,6 +8,7 @@ const SignUpPage: React.FC = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -17,7 +18,7 @@ const SignUpPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await authService.signUp({ email, password });
+      const response = await authService.signUp({ email, password, nickname: nickname.trim() });
       
       // Store token and redirect to profile setup
       localStorage.setItem('accessToken', response.accessToken);
@@ -91,6 +92,33 @@ const SignUpPage: React.FC = () => {
                 <span className="text-sm">{error}</span>
               </div>
             )}
+
+            <div>
+              <label htmlFor="nickname" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                Nickname
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <input
+                  id="nickname"
+                  type="text"
+                  required
+                  maxLength={50}
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-[var(--border-color)] rounded-xl 
+                    bg-[var(--bg-tertiary)] text-[var(--text-primary)]
+                    placeholder-[var(--text-tertiary)]
+                    focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50
+                    transition-all duration-300"
+                  placeholder="How should we call you?"
+                />
+              </div>
+            </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">

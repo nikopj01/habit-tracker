@@ -35,6 +35,16 @@ public class AuthService : IAuthService
             throw new ArgumentException("Password must be at least 6 characters long");
         }
 
+        if (string.IsNullOrWhiteSpace(request.Nickname))
+        {
+            throw new ArgumentException("Nickname is required");
+        }
+
+        if (request.Nickname.Trim().Length > 50)
+        {
+            throw new ArgumentException("Nickname cannot exceed 50 characters");
+        }
+
         // Check if user already exists
         if (await _userRepository.ExistsByEmailAsync(request.Email))
         {
@@ -44,16 +54,13 @@ public class AuthService : IAuthService
         // Hash the password
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-        // Extract default nickname from email (before @)
-        var defaultNickname = request.Email.ToLower().Trim().Split('@')[0];
-        
         // Create user
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = request.Email.ToLower().Trim(),
             PasswordHash = passwordHash,
-            Nickname = defaultNickname // Default nickname from email prefix
+            Nickname = request.Nickname.Trim()
         };
 
         await _userRepository.CreateAsync(user);

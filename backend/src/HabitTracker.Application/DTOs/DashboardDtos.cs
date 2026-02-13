@@ -11,6 +11,7 @@ public record ActivityAnalyticsDto(
     Guid ActivityId,
     string ActivityName,
     string ActivityDescription,
+    string ActivityIcon,
     List<bool> CompletionHistory,
     int TotalCompleted,
     int CurrentStreak,

@@ -2,6 +2,7 @@ export interface ActivityAnalytics {
   activityId: string;
   activityName: string;
   activityDescription: string;
+  activityIcon: string;
   completionHistory: boolean[];
   totalCompleted: number;
   currentStreak: number;

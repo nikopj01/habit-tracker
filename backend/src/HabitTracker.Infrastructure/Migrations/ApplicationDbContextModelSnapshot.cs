@@ -39,6 +39,11 @@ namespace HabitTracker.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -92,6 +97,47 @@ namespace HabitTracker.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ActivityLogs");
+                });
+
+            modelBuilder.Entity("HabitTracker.Application.Entities.UserMonthlyActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActivityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId");
+
+                    b.HasIndex("UserId", "ActivityId", "Year", "Month")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "Year", "Month");
+
+                    b.HasIndex("UserId", "Year", "Month", "IsActive");
+
+                    b.ToTable("UserMonthlyActivities");
                 });
 
             modelBuilder.Entity("HabitTracker.Application.Entities.User", b =>
@@ -149,6 +195,25 @@ namespace HabitTracker.Infrastructure.Migrations
 
                     b.HasOne("HabitTracker.Application.Entities.User", "User")
                         .WithMany("ActivityLogs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HabitTracker.Application.Entities.UserMonthlyActivity", b =>
+                {
+                    b.HasOne("HabitTracker.Application.Entities.Activity", "Activity")
+                        .WithMany()
+                        .HasForeignKey("ActivityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HabitTracker.Application.Entities.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
