@@ -13,12 +13,16 @@ namespace HabitTracker.Application.Services;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
-    private readonly IConfiguration _configuration;
+    private readonly string _jwtSecret;
+    private readonly string _jwtIssuer;
+    private readonly string _jwtAudience;
 
     public AuthService(IUserRepository userRepository, IConfiguration configuration)
     {
         _userRepository = userRepository;
-        _configuration = configuration;
+        _jwtSecret = GetRequiredConfiguration(configuration, "Jwt:Secret");
+        _jwtIssuer = GetRequiredConfiguration(configuration, "Jwt:Issuer");
+        _jwtAudience = GetRequiredConfiguration(configuration, "Jwt:Audience");
     }
 
     public async Task<AuthResponseDto> SignUpAsync(SignUpRequestDto request)
@@ -114,11 +118,7 @@ public class AuthService : IAuthService
 
     private string GenerateJwtToken(Guid userId, string email, bool rememberMe = false)
     {
-        var jwtSecret = _configuration["Jwt:Secret"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
-        var jwtIssuer = _configuration["Jwt:Issuer"] ?? "HabitTracker";
-        var jwtAudience = _configuration["Jwt:Audience"] ?? "HabitTrackerClient";
-
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSecret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -134,8 +134,8 @@ public class AuthService : IAuthService
         var expiration = rememberMe ? DateTime.UtcNow.AddDays(30) : DateTime.UtcNow.AddHours(24);
 
         var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
+            issuer: _jwtIssuer,
+            audience: _jwtAudience,
             claims: claims,
             expires: expiration,
             signingCredentials: credentials
@@ -147,5 +147,16 @@ public class AuthService : IAuthService
     private string GenerateRefreshToken()
     {
         return Guid.NewGuid().ToString();
+    }
+
+    private static string GetRequiredConfiguration(IConfiguration configuration, string key)
+    {
+        var value = configuration[key];
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        throw new InvalidOperationException($"Missing required configuration value: {key}");
     }
 }

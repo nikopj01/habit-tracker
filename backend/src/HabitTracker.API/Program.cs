@@ -6,7 +6,6 @@ using HabitTracker.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json.Serialization;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,9 +22,10 @@ builder.Services.AddControllers()
     });
 
 // Configure Entity Framework Core with PostgreSQL
+var dbConnectionString = GetRequiredConnectionString(builder.Configuration, "DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseNpgsql(dbConnectionString);
 });
 
 // Register Repositories
@@ -40,18 +40,21 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
+var corsAllowedOrigins = GetAllowedOrigins(builder.Configuration, builder.Environment);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(corsAllowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
 // Configure JWT Authentication
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your-super-secret-key-that-is-at-least-32-characters-long";
+var jwtSecret = GetRequiredConfiguration(builder.Configuration, "Jwt:Secret");
+var jwtIssuer = GetRequiredConfiguration(builder.Configuration, "Jwt:Issuer");
+var jwtAudience = GetRequiredConfiguration(builder.Configuration, "Jwt:Audience");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -61,8 +64,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "HabitTracker",
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "HabitTrackerClient",
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
         };
     });
@@ -100,3 +103,48 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static string GetRequiredConfiguration(IConfiguration configuration, string key)
+{
+    var value = configuration[key];
+    if (!string.IsNullOrWhiteSpace(value))
+    {
+        return value;
+    }
+
+    throw new InvalidOperationException($"Missing required configuration value: {key}");
+}
+
+static string GetRequiredConnectionString(IConfiguration configuration, string name)
+{
+    var value = configuration.GetConnectionString(name);
+    if (!string.IsNullOrWhiteSpace(value))
+    {
+        return value;
+    }
+
+    throw new InvalidOperationException($"Missing required connection string: ConnectionStrings:{name}");
+}
+
+static string[] GetAllowedOrigins(IConfiguration configuration, IWebHostEnvironment environment)
+{
+    var originsFromSection = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    if (originsFromSection is { Length: > 0 })
+    {
+        return originsFromSection;
+    }
+
+    var singleValue = configuration["Cors:AllowedOrigins"];
+    if (!string.IsNullOrWhiteSpace(singleValue))
+    {
+        return singleValue
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    if (environment.IsDevelopment())
+    {
+        return ["http://localhost:5173"];
+    }
+
+    throw new InvalidOperationException("Missing required configuration value: Cors:AllowedOrigins");
+}

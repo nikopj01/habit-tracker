@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+
+if (import.meta.env.PROD && !configuredApiUrl) {
+  throw new Error('Missing required frontend environment variable: VITE_API_URL');
+}
+
+const API_URL = configuredApiUrl || 'http://localhost:5160/api';
 
 const api = axios.create({
   baseURL: API_URL,
