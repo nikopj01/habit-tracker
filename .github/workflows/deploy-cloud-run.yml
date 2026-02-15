@@ -69,7 +69,9 @@ jobs:
             --allow-unauthenticated \
             --port 8080 \
             --min-instances "${API_MIN_INSTANCES}" \
-            --concurrency "${API_CONCURRENCY}"
+            --concurrency "${API_CONCURRENCY}" \
+            --set-env-vars "DB_HOST=34.84.229.88,DB_PORT=5432,DB_NAME=habit-tracker,DB_USER=postgres,DB_SSL_MODE=Require,Jwt__Issuer=HabitTracker,Jwt__Audience=HabitTrackerClient,Cors__AllowedOrigins=https://${FRONTEND_SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app,APPLY_MIGRATIONS_ON_STARTUP=false,USE_HTTPS_REDIRECTION=false" \
+            --set-secrets "DB_PASSWORD=habittracker-db-password:latest,Jwt__Secret=habittracker-jwt-secret:latest"
 
       - name: Resolve backend URL
         id: backend

@@ -564,6 +564,12 @@ Note:
 - Cause seen: restricted Cloud Build bucket permissions in CI.
 - Fix: changed workflow to Docker build/push (no `gcloud builds submit` in CI path).
 
+12. First deploy in a new region failed (`container failed to start and listen on PORT=8080`)
+- Cause seen: new Cloud Run service had no runtime env vars/secrets yet, backend crashed with `Missing database configuration`.
+- Fix: ensure deploy command (and GitHub workflow) always includes:
+  - `--set-env-vars` for DB/JWT/non-secret config
+  - `--set-secrets` for `DB_PASSWORD` and `Jwt__Secret`
+
 ## 13. Current Working Service URLs
 
 Note:
