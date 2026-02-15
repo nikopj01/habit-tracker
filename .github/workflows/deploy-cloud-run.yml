@@ -53,9 +53,8 @@ jobs:
 
       - name: Build and push backend image
         run: |
-          gcloud builds submit ./backend \
-            --tag "${{ steps.vars.outputs.backend_image }}" \
-            --project "${PROJECT_ID}"
+          docker build -t "${{ steps.vars.outputs.backend_image }}" ./backend
+          docker push "${{ steps.vars.outputs.backend_image }}"
 
       - name: Deploy backend service
         run: |
@@ -77,10 +76,11 @@ jobs:
 
       - name: Build and push frontend image
         run: |
-          gcloud builds submit ./frontend \
-            --project "${PROJECT_ID}" \
-            --config frontend/cloudbuild.yaml \
-            --substitutions "_IMAGE=${{ steps.vars.outputs.frontend_image }},_VITE_API_URL=${{ steps.backend.outputs.backend_url }}/api"
+          docker build \
+            --build-arg VITE_API_URL="${{ steps.backend.outputs.backend_url }}/api" \
+            -t "${{ steps.vars.outputs.frontend_image }}" \
+            ./frontend
+          docker push "${{ steps.vars.outputs.frontend_image }}"
 
       - name: Deploy frontend service
         run: |

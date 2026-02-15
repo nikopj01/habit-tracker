@@ -326,6 +326,8 @@ Service account roles required:
 - `roles/cloudbuild.builds.editor`
 - `roles/iam.serviceAccountUser`
 - `roles/secretmanager.secretAccessor`
+- `roles/serviceusage.serviceUsageConsumer`
+- `roles/storage.objectAdmin`
 
 What the workflow does:
 
