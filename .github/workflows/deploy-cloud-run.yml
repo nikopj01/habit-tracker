@@ -12,6 +12,7 @@ permissions:
 
 env:
   PROJECT_ID: habit-tracker-486806
+  PROJECT_NUMBER: "609538407050"
   REGION: us-central1
   ARTIFACT_REPOSITORY: habit-tracker
   BACKEND_SERVICE: habit-tracker-api
@@ -46,7 +47,6 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           BACKEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${BACKEND_SERVICE}:${SHORT_SHA}"
           FRONTEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${FRONTEND_SERVICE}:${SHORT_SHA}"
-          PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
           echo "backend_image=${BACKEND_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "frontend_image=${FRONTEND_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "project_number=${PROJECT_NUMBER}" >> "$GITHUB_OUTPUT"
