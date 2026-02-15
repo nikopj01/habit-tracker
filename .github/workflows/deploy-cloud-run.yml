@@ -1,0 +1,142 @@
+name: Deploy Cloud Run (Backend + Frontend)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_ID: habit-tracker-486806
+  REGION: us-central1
+  ARTIFACT_REPOSITORY: habit-tracker
+  BACKEND_SERVICE: habit-tracker-api
+  FRONTEND_SERVICE: habit-tracker-web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker auth for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Compute image tags
+        id: vars
+        shell: bash
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          BACKEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${BACKEND_SERVICE}:${SHORT_SHA}"
+          FRONTEND_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${FRONTEND_SERVICE}:${SHORT_SHA}"
+          PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
+          echo "backend_image=${BACKEND_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=${FRONTEND_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "project_number=${PROJECT_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push backend image
+        run: |
+          gcloud builds submit ./backend \
+            --tag "${{ steps.vars.outputs.backend_image }}" \
+            --project "${PROJECT_ID}"
+
+      - name: Deploy backend service
+        run: |
+          gcloud run deploy "${BACKEND_SERVICE}" \
+            --image "${{ steps.vars.outputs.backend_image }}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080
+
+      - name: Resolve backend URL
+        id: backend
+        shell: bash
+        run: |
+          BACKEND_URL="$(gcloud run services describe "${BACKEND_SERVICE}" --region "${REGION}" --project "${PROJECT_ID}" --format='value(status.url)')"
+          echo "backend_url=${BACKEND_URL}" >> "$GITHUB_OUTPUT"
+          echo "Using backend URL: ${BACKEND_URL}"
+
+      - name: Build and push frontend image
+        run: |
+          gcloud builds submit ./frontend \
+            --project "${PROJECT_ID}" \
+            --config frontend/cloudbuild.yaml \
+            --substitutions "_IMAGE=${{ steps.vars.outputs.frontend_image }},_VITE_API_URL=${{ steps.backend.outputs.backend_url }}/api"
+
+      - name: Deploy frontend service
+        run: |
+          gcloud run deploy "${FRONTEND_SERVICE}" \
+            --image "${{ steps.vars.outputs.frontend_image }}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080
+
+      - name: Resolve frontend URLs
+        id: frontend
+        shell: bash
+        run: |
+          FRONTEND_CANONICAL_URL="$(gcloud run services describe "${FRONTEND_SERVICE}" --region "${REGION}" --project "${PROJECT_ID}" --format='value(status.url)')"
+          FRONTEND_PROJECT_NUMBER_URL="https://${FRONTEND_SERVICE}-${{ steps.vars.outputs.project_number }}.${REGION}.run.app"
+          echo "frontend_canonical_url=${FRONTEND_CANONICAL_URL}" >> "$GITHUB_OUTPUT"
+          echo "frontend_project_number_url=${FRONTEND_PROJECT_NUMBER_URL}" >> "$GITHUB_OUTPUT"
+          echo "Using frontend canonical URL: ${FRONTEND_CANONICAL_URL}"
+          echo "Using frontend project-number URL: ${FRONTEND_PROJECT_NUMBER_URL}"
+
+      - name: Update backend CORS allowed origins
+        run: |
+          gcloud run services update "${BACKEND_SERVICE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --update-env-vars "^@@^Cors__AllowedOrigins=${{ steps.frontend.outputs.frontend_canonical_url }},${{ steps.frontend.outputs.frontend_project_number_url }}"
+
+      - name: Smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BACKEND_URL="${{ steps.backend.outputs.backend_url }}"
+          FRONTEND_URL="${{ steps.frontend.outputs.frontend_canonical_url }}"
+
+          curl -fsS "${BACKEND_URL}/api/health" > /dev/null
+          curl -fsS "${FRONTEND_URL}/" > /dev/null
+
+          PREFLIGHT_HEADERS="$(mktemp)"
+          curl -sS -D "${PREFLIGHT_HEADERS}" -o /dev/null \
+            -X OPTIONS "${BACKEND_URL}/api/auth/login" \
+            -H "Origin: ${FRONTEND_URL}" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type"
+          grep -i "access-control-allow-origin: ${FRONTEND_URL}" "${PREFLIGHT_HEADERS}" > /dev/null
+
+          LOGIN_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -X POST "${BACKEND_URL}/api/auth/login" \
+            -H "Origin: ${FRONTEND_URL}" \
+            -H "Content-Type: application/json" \
+            -d '{}')"
+
+          if [[ "${LOGIN_STATUS}" != "400" ]]; then
+            echo "Unexpected login status: ${LOGIN_STATUS}"
+            exit 1
+          fi
+
+          echo "Smoke checks passed."
